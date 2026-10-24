@@ -65,7 +65,57 @@ export function parseItems(input: unknown): WorkItem[] | null {
   return out
 }
 
-export const register: Register = on => {
+/** 端末での表示幅。全角（CJK・かな・全角記号）は 2、ほかは 1 */
+export function displayWidth(text: string): number {
+  let w = 0
+  for (const ch of text) {
+    const c = ch.codePointAt(0) ?? 0
+    const wide =
+      (c >= 0x1100 && c <= 0x115f) ||
+      (c >= 0x2e80 && c <= 0xa4cf) ||
+      (c >= 0xac00 && c <= 0xd7a3) ||
+      (c >= 0xf900 && c <= 0xfaff) ||
+      (c >= 0xfe30 && c <= 0xfe6f) ||
+      (c >= 0xff00 && c <= 0xff60) ||
+      (c >= 0xffe0 && c <= 0xffe6) ||
+      (c >= 0x20000 && c <= 0x3fffd)
+    w += wide ? 2 : 1
+  }
+  return w
+}
+
+function clipWidth(text: string, max: number): string {
+  if (displayWidth(text) <= max) return text
+  let out = ''
+  for (const ch of text) {
+    if (displayWidth(out + ch) > max - 1) break
+    out += ch
+  }
+  return `${out}…`
+}
+
+export type BandLine = { kind: 'user' | 'doing'; text: string; tail: string }
+
+/** 入力欄の上の帯 1 行。あなた待ちを優先、次に進行中。どちらも無ければ null（帯を出さない） */
+export function bandLine(list: readonly WorkItem[], width: number): BandLine | null {
+  const of = (s: WorkState) => list.filter(i => i.state === s)
+  const user = of('user')
+  const doing = of('doing')
+  const head = user.length ? user : doing
+  if (head.length === 0) return null
+  const kind = user.length ? 'user' : 'doing'
+  const prefix = kind === 'user' ? '● あなた待ち: ' : '▶ '
+  const more = head.length > 1 ? ` 他 ${head.length - 1} 件` : ''
+  const tail = kind === 'doing' ? `次 ${of('next').length} · 保留 ${of('later').length}` : ''
+  // 末尾の dim の分（空白 1 つ込み）を先に確保し、残りにタイトルを収める
+  const room = width - displayWidth(prefix) - displayWidth(more) - (tail ? displayWidth(tail) + 1 : 0)
+  const title = clipWidth((head[0]?.title ?? '').replace(/\s+/g, ' ').trim(), Math.max(room, 2))
+  return { kind, text: `${prefix}${title}${more}`, tail }
+}
+
+export const register: Register = (on, options) => {
+  const showBand = options?.showBand !== false
+
   on('session.start', async ($, e, next) => {
     await $.tool.register({
       name: TOOL,
@@ -146,6 +196,23 @@ export const register: Register = on => {
               ))}
           </Box>
         ))}
+      </Box>
+    )
+  })
+
+  // 入力欄の上の細い帯。あなた待ち・進行中があるときだけ 1 行。ペインが見えている間は出さない
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (!showBand || e.props.hasSurvey) return next(e)
+    if ((await $.ui.panes()).some(p => p.id === PANE && p.isShown)) return next(e)
+    const line = bandLine(await read($, items), e.props.bodyColumns)
+    if (line === null) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
+    return (
+      <Box>
+        <Text color={line.kind === 'user' ? 'warning' : 'suggestion'} wrap="truncate">
+          {line.tail ? `${line.text} ` : line.text}
+        </Text>
+        {line.tail ? <Text dimColor wrap="truncate">{line.tail}</Text> : null}
       </Box>
     )
   })
