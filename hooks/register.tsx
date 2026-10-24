@@ -145,7 +145,8 @@ export const register: Register = (on, options) => {
       },
       isDeferred: false,
     })
-    await $.command.register({ name: 'worklist', description: '作業の一覧のペインを開く・閉じる' })
+    // ペインを開け閉めするだけなので、作業中のターンを待たせずその場で動かす
+    await $.command.register({ name: 'worklist', description: '作業の一覧のペインを開く・閉じる', immediate: true })
     $.ui.status(undefined)
     return next(e)
   })

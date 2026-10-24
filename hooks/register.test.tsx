@@ -52,6 +52,17 @@ test('tool で一覧を置き換えると status line とペインに出る', as
   await ui.unmount()
 })
 
+test('/worklist は作業中のターンを待たせず、その場で開く（immediate）', async ($, on) => {
+  const specs: { name: string; immediate?: true }[] = []
+  on('tool.register', (_, e) => ({ value: { tool: `mcp__worklist__${e.name}` } }))
+  on('command.register', (_, e) => (specs.push(e as never), { value: { command: 'worklist' } }))
+  on('ui.status', () => ({ value: undefined }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  expect(specs.find((s) => s.name === 'worklist')?.immediate).toBe(true)
+})
+
 test('次が 3 件以上なら先頭 2 件と残りの数', async () => {
   expect(
     summary([
