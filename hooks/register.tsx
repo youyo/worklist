@@ -115,7 +115,7 @@ export const register: Register = on => {
       await $.ui.close({ id: PANE })
       return { text: '作業の一覧を閉じた。' }
     }
-    await $.ui.open({ id: PANE, title: '作業の一覧（/worklist か Esc で閉じる）', closeOnEscape: true })
+    await $.ui.open({ id: PANE, title: 'worklist', closeOnEscape: true })
     return { text: '作業の一覧を開いた。' }
   })
 
