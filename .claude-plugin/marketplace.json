@@ -1,0 +1,5 @@
+{
+  "name": "worklist",
+  "owner": { "name": "youyo" },
+  "plugins": [{ "name": "worklist", "source": "./" }]
+}

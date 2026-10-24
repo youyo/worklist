@@ -1,0 +1,6 @@
+{
+  "name": "worklist",
+  "version": "0.2.0",
+  "description": "Claude が更新する作業の一覧（進行中・次・あなた待ち・保留）を、/worklist でペインに出す薄い viewer",
+  "types": "./types/index.d.ts"
+}
